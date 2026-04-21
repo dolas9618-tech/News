@@ -1,154 +1,96 @@
-import axios from 'axios';
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
-const PostDetailPage = ({ addToCart }) => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  
-  const [post, setPost] = useState(null);
-  const [comments, setComments] = useState([]); 
-  const [newComment, setNewComment] = useState(""); // Жаңа пікір мәтіні
-  const [isSubmitting, setIsSubmitting] = useState(false); // Жіберу күйі
-  const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
+function PostDetailPage() {
+    const { id } = useParams();
+    const [news, setNews] = useState({});
+    const [comments, setComments] = useState([]);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const resPost = await axios.get(`https://8aefe87c60033c7c.mokky.dev/BAHANDI/${id}`);
-        setPost(resPost.data);
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const [postRes, commRes] = await Promise.all([
+                    axios.get(`https://dea920a762b902b2.mokky.dev/posts${id}`),
+                    axios.get(`https://dea920a762b902b2.mokky.dev/comments?postId=${id}`)
+                ]);
+                setNews(postRes.data);
+                setComments(commRes.data);
+            } catch (e) { console.error("Ошибка загрузки данных", e); }
+        }
+        fetchData();
+    }, [id]);
+
+    async function submitComment(e) {
+        e.preventDefault();
+        if (!commentText.trim()) return;
+        setIsSubmitting(true);
 
         try {
-          // parentId арқылы осы тауарға тиісті пікірлерді сүзіп алу
-          const resComments = await axios.get(`https://8aefe87c60033c7c.mokky.dev/comments?parentId=${id}`);
-          setComments(resComments.data);
-        } catch (commentErr) {
-          console.warn("Пікірлер кестесі табылмады.");
-        }
-
-      } catch (error) {
-        console.error("Тауарды жүктеу мүмкін болмады:", error);
-        setPost(null);
-      } finally {
-        setLoading(false);
-      }
+            const commentObj = {
+                postId: id,
+                text: commentText,
+                createdAt: new Date().toLocaleString('ru-RU')
+            };
+            const response = await axios.post('https://dea920a762b902b2.mokky.dev/comments', commentObj);
+            setComments([response.data, ...comments]); // Новый коммент сразу летит вверх
+            setCommentText('');
+        } catch (e) { alert("Не удалось отправить"); }
+        finally { setIsSubmitting(false); }
     }
-    fetchData();
-  }, [id]);
 
-  // Пікір жіберу функциясы
-  const handleSendComment = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      const response = await axios.post('https://8aefe87c60033c7c.mokky.dev/coments', {
-        parentId: id, // Қай тауарға жазылғанын білу үшін
-        text: newComment,
-        date: new Date().toLocaleString()
-      });
-
-      // Жаңа пікірді тізімге қосу және форманы тазалау
-      setComments([...comments, response.data]);
-      setNewComment("");
-    } catch (err) {
-      alert("Пікір жіберу кезінде қате шықты.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (loading) return <h2 style={{textAlign: 'center', marginTop: '100px'}}>ЖҮКТЕЛУДЕ...</h2>;
-  
-  if (!post) return (
-    <div style={{textAlign: 'center', padding: '100px'}}>
-      <h1>Тауар табылмады</h1>
-      <button onClick={() => navigate('/')}>Артқа қайту</button>
-    </div>
-  );
-
-  return (
-    <div className="modal-overlay" onClick={() => navigate(-1)}>
-      <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={() => navigate(-1)}>&times;</button>
-        
-        <div className="modal-body">
-          <div className="modal-img">
-            <img src={post.image} alt={post.title} />
-          </div>
-
-          <div className="modal-info">
-            <div>
-              <h2>{post.title}</h2>
-              <p className="modal-price-display">
-                {post.price.toLocaleString()} ₸ • {post.weight} г
-              </p>
-              <p className="modal-desc">{post.description}</p>
+    return (
+        <div className="container" style={{ maxWidth: '800px', padding: '40px 20px' }}>
+            <img src={news.image || "https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=1200"} 
+                 alt="" style={{ width: '100%', borderRadius: '15px', marginBottom: '20px' }} />
+            
+            <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>{news.title}</h1>
+            <p style={{ color: '#666', marginBottom: '30px' }}>{news.category} • {news.date}</p>
+            
+            <div style={{ lineHeight: '1.6', fontSize: '1.1rem', marginBottom: '50px' }}>
+                {/* Тут будет текст новости из твоей базы */}
+                Далеко-далеко за словесными горами в стране гласных и согласных живут рыбные тексты...
             </div>
 
-            <div className="modal-footer">
-              <div className="counter-block">
-                <button onClick={() => quantity > 1 && setQuantity(quantity - 1)}>−</button>
-                <span>{quantity}</span>
-                <button onClick={() => setQuantity(quantity + 1)}>+</button>
-              </div>
+            <hr style={{ border: '0', borderTop: '1px solid #eee', margin: '40px 0' }} />
 
-              <button 
-                className="final-add-btn"
-                onClick={() => {
-                  if(addToCart) addToCart({ ...post, quantity });
-                  navigate(-1);
-                }}
-              >
-                В корзину | {(post.price * quantity).toLocaleString()} ₸
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <hr className="divider" />
-
-        {/* ПІКІРЛЕР БӨЛІМІ */}
-        <div className="comments-section" style={{padding: '20px'}}>
-             <h3>Пікірлер ({comments.length})</h3>
-             
-             <div className="comments-list" style={{maxHeight: '200px', overflowY: 'auto', marginBottom: '20px'}}>
-                {comments.length > 0 ? (
-                  comments.map((item) => (
-                    <div key={item.id} className="comment-item" style={{background: '#f9f9f9', padding: '10px', marginBottom: '10px', borderRadius: '8px'}}>
-                      <p style={{margin: '0', fontSize: '14px'}}>{item.text}</p>
-                      <small style={{color: '#888'}}>{item.date}</small>
+            <section className="comments">
+                <h3>Обсуждение ({comments.length})</h3>
+                
+                {/* Форма комментария */}
+                <form onSubmit={submitComment} style={{ marginBottom: '40px', background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #ddd' }}>
+                    <textarea 
+                        placeholder="Напишите, что вы думаете об этом..."
+                        style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', minHeight: '80px', fontSize: '1rem' }}
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                    />
+                    <div style={{ textAlign: 'right', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting}
+                            className="filter-btn active"
+                            style={{ padding: '10px 25px' }}
+                        >
+                            {isSubmitting ? 'Отправка...' : 'Опубликовать'}
+                        </button>
                     </div>
-                  ))
-                ) : (
-                  <p style={{color: '#999'}}>Әзірге пікір жоқ...</p>
-                )}
-             </div>
+                </form>
 
-             {/* Пікір жазу формасы */}
-             <form onSubmit={handleSendComment} style={{display: 'flex', gap: '10px'}}>
-                <input 
-                  type="text" 
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Пікіріңізді қалдырыңыз..."
-                  style={{flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ddd'}}
-                />
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  style={{padding: '10px 20px', background: '#ff5e00', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer'}}
-                >
-                  {isSubmitting ? "..." : "Жіберу"}
-                </button>
-             </form>
+                {/* Список комментариев */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {comments.length > 0 ? comments.map(c => (
+                        <div key={c.id} style={{ background: '#fcfcfc', padding: '15px', borderRadius: '10px', borderLeft: '4px solid #0056b3' }}>
+                            <p style={{ margin: '0 0 5px 0' }}>{c.text}</p>
+                            <small style={{ color: '#999' }}>{c.createdAt}</small>
+                        </div>
+                    )) : <p style={{ color: '#999' }}>Пока никто не оставил комментарий. Будьте первым!</p>}
+                </div>
+            </section>
         </div>
-      </div>
-    </div>
-  );
-};
+    );
+}
 
 export default PostDetailPage;

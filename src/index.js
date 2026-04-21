@@ -1,13 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-
-// Стиль файлын импорттау (жолын тексер: егер App.js-пен көрші болса ./assets/... деп басталады)
-import './assets/style/style.css';
+import './assets/style/style.css'; // Убедись, что путь верный
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  <BrowserRouter>
     <App />
-  </React.StrictMode>
+  </BrowserRouter>
 );

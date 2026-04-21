@@ -1,66 +1,59 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import '../assets/style/style.css';
 import PostCard from './PostCard';
 
 function PostList() {
-    const [news, Setnews] = useState([]);
+    const [news, setNews] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
-
     const location = useLocation();
+    
     const queryParams = new URLSearchParams(location.search);
     const currentCategory = queryParams.get('category');
 
     useEffect(() => {
-        async function fetchpost() {
+        async function fetchPosts() {
+            setIsLoading(true);
             try {
-                let url = 'https://e7e5954563b5bfc5.mokky.dev/posts';
-
-                if (currentCategory) {
-                    url += `?category=${currentCategory}`;
-                }
+                // Если категория есть, добавляем фильтр в запрос к Mokky
+                const url = currentCategory 
+                    ? `https://dea920a762b902b2.mokky.dev/posts?category=${currentCategory}`
+                    : 'https://dea920a762b902b2.mokky.dev/posts';
 
                 const response = await axios.get(url);
-
-                console.log(response.data);
-                Setnews(response.data);
+                setNews(response.data);
             } catch (error) {
-                console.log(error);
+                console.error("Ошибка при загрузке:", error);
+            } finally {
+                setIsLoading(false);
             }
         }
-
-        fetchpost();
+        fetchPosts();
     }, [currentCategory]);
-    const setFilter = (category) => {
-        if (category) {
-            navigate(`?category=${category}`);
-        } else {
-            navigate('/');
-        }
-    };
 
     return (
-        <div className="posts">
-            <div>
-                <button onClick={() => setFilter(null)}>Все новости</button>
-                <button onClick={() => setFilter('Футбол')}>Футбол</button>
-                <button onClick={() => setFilter('ММА')}>ММА</button>
+        <div className="container">
+            <div className="filters">
+                <button className={`filter-btn ${!currentCategory ? 'active' : ''}`} onClick={() => navigate('/')}>Все</button>
+                <button className={`filter-btn ${currentCategory === 'Футбол' ? 'active' : ''}`} onClick={() => navigate('?category=Футбол')}>Футбол</button>
+                <button className={`filter-btn ${currentCategory === 'ММА' ? 'active' : ''}`} onClick={() => navigate('?category=ММА')}>ММА</button>
             </div>
 
-            <h2>
-                Список новостей {currentCategory && `(Категория: ${currentCategory})`}
+            <h2 style={{ marginBottom: '30px' }}>
+                {currentCategory ? `Новости спорта: ${currentCategory}` : 'Последние новости'}
             </h2>
 
-            {news.length > 0 ? (
-                news.map((post) => (
-                    <PostCard
-                        key={post.id}
-                        post={post}
-                    />
-                ))
+            {isLoading ? (
+                <div className="loader">Загрузка свежих новостей...</div>
             ) : (
-                <p>Загрузка новостей не удалась или пусто</p>
+                <div className="posts-grid">
+                    {news.length > 0 ? (
+                        news.map((post) => <PostCard key={post.id} post={post} />)
+                    ) : (
+                        <p>В категории "{currentCategory}" пока нет новостей.</p>
+                    )}
+                </div>
             )}
         </div>
     );
